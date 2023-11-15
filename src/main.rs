@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::Context;
 use poise::serenity_prelude as serenity;
 use shuttle_poise::ShuttlePoise;
 use shuttle_secrets::SecretStore;
@@ -10,13 +10,9 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 
 #[shuttle_runtime::main]
 async fn razzbot(
-	#[shuttle_secrets::Secrets] secret_store: SecretStore,
+	#[shuttle_secrets::Secrets] secrets: SecretStore,
 ) -> ShuttlePoise<Data, Error> {
-	let token = if let Some(token) = secret_store.get("DISCORD_TOKEN") {
-		token
-	} else {
-		return Err(anyhow!("'DISCORD_TOKEN' was not found").into());
-	};
+	let token = secrets.get("DISCORD_TOKEN").context("'DISCORD_TOKEN' not found")?;
 	let framework = poise::Framework::builder()
 		.options(poise::FrameworkOptions {
 			commands: vec![commands::ping()],

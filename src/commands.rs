@@ -1,4 +1,5 @@
-use crate::{Context, Error};
+use crate::Error;
+type Context<'a> = poise::Context<'a, crate::Data, Error>;
 
 /// Ping, Pong
 #[poise::command(slash_command)]

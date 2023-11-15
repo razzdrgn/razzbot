@@ -7,7 +7,6 @@ mod commands;
 // Needed for Poise
 pub struct Data {}
 type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
 
 #[shuttle_runtime::main]
 async fn razzbot(

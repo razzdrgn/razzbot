@@ -1,23 +1,34 @@
-use anyhow::anyhow;
+use anyhow::Context;
 use poise::serenity_prelude as serenity;
-use shuttle_poise::ShuttlePoise;
 use shuttle_secrets::SecretStore;
 
 mod commands;
+
 // Needed for Poise
 pub struct Data {}
-type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+
+pub struct RazzbotService {
+	discord: poise::FrameworkBuilder<Data, Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>>,
+}
+
+#[shuttle_runtime::async_trait]
+impl shuttle_runtime::Service for RazzbotService {
+	async fn bind(
+		mut self,
+		addr: std::net::SocketAddr,
+	) -> Result<(), shuttle_runtime::Error> {
+		tokio::select!(
+			_ = self.discord.run() => {},
+		);
+		Ok(())
+	}
+}
 
 #[shuttle_runtime::main]
 async fn razzbot(
-	#[shuttle_secrets::Secrets] secret_store: SecretStore,
-) -> ShuttlePoise<Data, Error> {
-	let token = if let Some(token) = secret_store.get("DISCORD_TOKEN") {
-		token
-	} else {
-		return Err(anyhow!("'DISCORD_TOKEN' was not found").into());
-	};
+	#[shuttle_secrets::Secrets] secrets: SecretStore,
+) -> Result<RazzbotService, shuttle_runtime::Error> {
+	let token = secrets.get("DISCORD_TOKEN").context("'DISCORD_TOKEN' not found")?;
 	let framework = poise::Framework::builder()
 		.options(poise::FrameworkOptions {
 			commands: vec![commands::ping()],
@@ -30,10 +41,9 @@ async fn razzbot(
 				poise::builtins::register_globally(ctx, &framework.options().commands).await?;
 				Ok(Data {})
 			})
-		})
-		.build()
-		.await
-		.map_err(shuttle_runtime::CustomError::new)?;
+		});
 
-	Ok(framework.into())
+	Ok(RazzbotService {
+		discord: framework,
+	})
 }

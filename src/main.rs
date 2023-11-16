@@ -1,6 +1,7 @@
-use anyhow::Context;
+use anyhow::{Context, Result};
 use poise::serenity_prelude as serenity;
 use shuttle_secrets::SecretStore;
+use std::sync::Arc;
 
 mod commands;
 
@@ -8,7 +9,7 @@ mod commands;
 pub struct Data {}
 
 pub struct RazzbotService {
-	discord: poise::FrameworkBuilder<Data, Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>>,
+	discord: Arc<poise::Framework<Data, Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>>>,
 }
 
 #[shuttle_runtime::async_trait]
@@ -18,7 +19,7 @@ impl shuttle_runtime::Service for RazzbotService {
 		addr: std::net::SocketAddr,
 	) -> Result<(), shuttle_runtime::Error> {
 		tokio::select!(
-			_ = self.discord.run() => {},
+			_ = self.discord.start() => {},
 		);
 		Ok(())
 	}
@@ -29,7 +30,7 @@ async fn razzbot(
 	#[shuttle_secrets::Secrets] secrets: SecretStore,
 ) -> Result<RazzbotService, shuttle_runtime::Error> {
 	let token = secrets.get("DISCORD_TOKEN").context("'DISCORD_TOKEN' not found")?;
-	let framework = poise::Framework::builder()
+	let discord_client = poise::Framework::builder()
 		.options(poise::FrameworkOptions {
 			commands: vec![commands::ping()],
 			..Default::default()
@@ -41,9 +42,14 @@ async fn razzbot(
 				poise::builtins::register_globally(ctx, &framework.options().commands).await?;
 				Ok(Data {})
 			})
-		});
+		})
+		.build()
+		.await
+		.with_context(|| "Failed to build discord bot")?;
+
+	let _discord_context = discord_client.client().cache_and_http.clone();
 
 	Ok(RazzbotService {
-		discord: framework,
+		discord: discord_client,
 	})
 }

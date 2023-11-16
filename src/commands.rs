@@ -4,6 +4,6 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 /// Ping, Pong
 #[poise::command(slash_command)]
 pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
-	ctx.say(format!("Pong! This message took {} milliseconds!", latency)).await?;
+	ctx.say("Pong!").await?;
 	Ok(())
 }

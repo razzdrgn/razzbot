@@ -6,7 +6,7 @@ A (hopefully) simple Discord Bot, built in Rust.
 
 Right now? Just a /ping command that returns "Pong!". However, I'd ideally like to add the following at some point, in order of how quickly I think I can implement it:
 
-- Automatically publishing messages posted in announcement channels
+- ~~Automatically publishing messages posted in announcement channels~~ Done!
 - User Join/Leave events logging/handling
 - Edit and Delete logging for moderation
 - Role management, and some kind of user verification/captcha system

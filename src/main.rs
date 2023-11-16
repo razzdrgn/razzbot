@@ -1,5 +1,5 @@
 use anyhow::{Context, Result}; // Error handling- Shuttle does not work with Eyre yet :C
-use poise::serenity_prelude as serenity; // Use Poises' serenity exports
+use poise::{Event, serenity_prelude as serenity}; // Use Poises' serenity exports
 use shuttle_secrets::SecretStore;
 use std::sync::Arc;
 
@@ -18,12 +18,38 @@ pub struct RazzbotService {
 // Defines the function that processes all the startup details for each runtime in the service
 #[shuttle_runtime::async_trait]
 impl shuttle_runtime::Service for RazzbotService {
-	async fn bind(mut self, addr: std::net::SocketAddr) -> Result<(), shuttle_runtime::Error> {
+	async fn bind(mut self, _addr: std::net::SocketAddr) -> Result<(), shuttle_runtime::Error> {
 		tokio::select!(
 			_ = self.discord.start() => {},
 		);
 		Ok(())
 	}
+}
+
+// Event Handler for handling internal discord events
+async fn event_handler(
+	ctx: &serenity::Context,
+	event: &Event<'_>,
+	_framework: poise::FrameworkContext<'_, Data, Box<dyn std::error::Error + Send + Sync>>,
+	_data: &Data,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+	match event {
+		Event::Ready { data_about_bot } => {
+			// Print to console when bot successfully connects to Discord instance
+			println!("{} has successfully logged in!", data_about_bot.user.name);
+		}
+		Event::Message { new_message } => {
+			// Automatically publish all messages in announcement channels
+			if let serenity::Channel::Guild(message_channel) = new_message.channel(ctx).await? {
+				if let serenity::ChannelType::News = message_channel.kind {
+					new_message.crosspost(ctx).await?;
+				}
+			}
+		}
+		_ => {}
+	}
+
+	Ok(())
 }
 
 // Main function where everything gets initialized before being passed into the runtime starter
@@ -40,6 +66,9 @@ async fn razzbot(
 	let discord_client = poise::Framework::builder()
 		.options(poise::FrameworkOptions {
 			commands: vec![commands::ping()], // All implemented commands go here (god I hope there's a shorter way to implement this)
+			event_handler: |_ctx, event, _framework, _data| {
+				Box::pin(event_handler(_ctx, event, _framework, _data))
+			},
 			..Default::default()
 		})
 		.token(token)

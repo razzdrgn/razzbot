@@ -65,7 +65,7 @@ async fn razzbot(
 	// Build the Poise Framework to use as the Discord runtime
 	let discord_client = poise::Framework::builder()
 		.options(poise::FrameworkOptions {
-			commands: vec![commands::ping()], // All implemented commands go here (god I hope there's a shorter way to implement this)
+			commands: vec![commands::ping(), commands::roll()], // All implemented commands go here (god I hope there's a shorter way to implement this)
 			event_handler: |_ctx, event, _framework, _data| {
 				Box::pin(event_handler(_ctx, event, _framework, _data))
 			},

@@ -10,7 +10,7 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
 	Ok(())
 }
 
-/// Rolls a dice
+/// Just roll with it!
 #[poise::command(slash_command)]
 pub async fn roll(
 	ctx: Context<'_>,
@@ -26,16 +26,38 @@ pub async fn roll(
 		.iter()
 		.map(|x| x + modifier.unwrap_or_default())
 		.collect();
-	let sum = result.iter().sum::<i32>();
 	let output: String;
-	if let Some(modifier) = modifier {
+	if result.len() > 1 {
+		if let Some(modifier) = modifier {
+			output = format!(
+				"You rolled the following rolls: {:?}\nWith your modifier of {} applied, you got: {:?}\nThe sum is {}, your highest roll is {}, and lowest {}.\nThe average of all your rolls is {}",
+				result,
+				modifier,
+				mod_result,
+				mod_result.iter().sum::<i32>(),
+				mod_result.iter().max().unwrap(),
+				mod_result.iter().min().unwrap(),
+				(mod_result.iter().sum::<i32>() as f32) / (mod_result.len() as f32)
+			);
+		} else {
+			output = format!(
+				"You rolled the following rolls: {:?}\nThe sum is {}, your highest roll is {}, and lowest {}.\nThe average of all your rolls is {}",
+				result,
+				result.iter().sum::<i32>(),
+				result.iter().max().unwrap(),
+				result.iter().min().unwrap(),
+				(result.iter().sum::<i32>() as f32) / (result.len() as f32)
+			);
+		}
+	} else if let Some(modifier) = modifier {
 		output = format!(
-			"Dice rolled: {:?}, with modifier {} applied: {:?}, sum is: {}",
-			result, modifier, mod_result, sum
+			"You rolled a {}! With your modifier of {}, that's a {}!",
+			result[0], modifier, mod_result[0]
 		);
 	} else {
-		output = format!("Dice rolled: {:?}, sum is: {}", result, sum);
+		output = format!("You rolled a {}!", result[0]);
 	}
+
 	ctx.say(output).await?;
 	Ok(())
 }

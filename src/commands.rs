@@ -20,7 +20,7 @@ pub async fn roll(
 ) -> Result<(), Error> {
 	let mut result: Vec<i32> = vec![];
 	for _i in 0..dice.unwrap_or(1) {
-		result.push(rand::thread_rng().gen_range(1..sides) as i32)
+		result.push(rand::thread_rng().gen_range(1..=sides) as i32)
 	}
 	let mod_result: Vec<i32> = result
 		.iter()

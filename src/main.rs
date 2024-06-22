@@ -1,6 +1,6 @@
 use anyhow::{Context, Result}; // Error handling- Shuttle does not work with Eyre yet :C
 use poise::{Event, serenity_prelude as serenity}; // Use Poises' serenity exports
-use shuttle_secrets::SecretStore;
+use shuttle_runtime::SecretStore;
 use std::sync::Arc;
 
 mod commands; // Where all the Poise commands are implemented
@@ -55,7 +55,7 @@ async fn event_handler(
 // Main function where everything gets initialized before being passed into the runtime starter
 #[shuttle_runtime::main]
 async fn razzbot(
-	#[shuttle_secrets::Secrets] secrets: SecretStore,
+	#[shuttle_runtime::Secrets] secrets: SecretStore,
 ) -> Result<RazzbotService, shuttle_runtime::Error> {
 	// Get the token from the SecretStore
 	let token = secrets

@@ -1,7 +1,6 @@
 use anyhow::{Context, Result}; // Error handling- Shuttle does not work with Eyre yet :C
-use poise::{Event, serenity_prelude as serenity}; // Use Poises' serenity exports
+use poise::{serenity_prelude as serenity}; // Use Poises' serenity exports
 use shuttle_runtime::SecretStore;
-use std::sync::Arc;
 
 mod commands; // Where all the Poise commands are implemented
 
@@ -10,9 +9,7 @@ pub struct Data {}
 
 // Shuttle Service struct, each field represents a "runtime" (ar at least that's how I'm thinking of it)
 pub struct RazzbotService {
-	discord: Arc<
-		poise::Framework<Data, Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>>,
-	>,
+	discord: serenity::Client,
 }
 
 // Defines the function that processes all the startup details for each runtime in the service
@@ -29,16 +26,16 @@ impl shuttle_runtime::Service for RazzbotService {
 // Event Handler for handling internal discord events
 async fn event_handler(
 	ctx: &serenity::Context,
-	event: &Event<'_>,
+	event: &serenity::FullEvent,
 	_framework: poise::FrameworkContext<'_, Data, Box<dyn std::error::Error + Send + Sync>>,
 	_data: &Data,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 	match event {
-		Event::Ready { data_about_bot } => {
+		serenity::FullEvent::Ready { data_about_bot, .. } => {
 			// Print to console when bot successfully connects to Discord instance
 			println!("{} has successfully logged in!", data_about_bot.user.name);
 		}
-		Event::Message { new_message } => {
+		serenity::FullEvent::Message { new_message, .. } => {
 			// Automatically publish all messages in announcement channels
 			if let serenity::Channel::Guild(message_channel) = new_message.channel(ctx).await? {
 				if let serenity::ChannelType::News = message_channel.kind {
@@ -62,8 +59,10 @@ async fn razzbot(
 		.get("DISCORD_TOKEN")
 		.context("'DISCORD_TOKEN' not found")?;
 
+	let intents = serenity::GatewayIntents::non_privileged(); // Discord Gateway Intents go in here using or (|) as bitwise combiners
+
 	// Build the Poise Framework to use as the Discord runtime
-	let discord_client = poise::Framework::builder()
+	let framework = poise::Framework::builder()
 		.options(poise::FrameworkOptions {
 			commands: vec![commands::ping(), commands::roll()], // All implemented commands go here (god I hope there's a shorter way to implement this)
 			event_handler: |_ctx, event, _framework, _data| {
@@ -71,8 +70,6 @@ async fn razzbot(
 			},
 			..Default::default()
 		})
-		.token(token)
-		.intents(serenity::GatewayIntents::non_privileged()) // Discord Gateway Intents go in here using or (|) as bitwise combiners
 		.setup(|ctx, _ready, framework| {
 			// I'll be real I'm not sure what this is doing
 			Box::pin(async move {
@@ -80,12 +77,17 @@ async fn razzbot(
 				Ok(Data {})
 			})
 		})
-		.build()
+		.build();
+
+	let discord_client = serenity::ClientBuilder::new(token, intents)
+		.framework(framework)
 		.await
 		.with_context(|| "Failed to build discord bot")?;
 
 	// Extracts Discord context to allow for other services to push messages
-	let _discord_context = discord_client.client().cache_and_http.clone();
+	// Not used yet, need to figure out how to reimplement at some point
+	// let _discord_ctx_cache = discord_client.cache.clone();
+	// let _discord_ctx_http = discord_client.http.clone();
 
 	// Starts the service runtimes by passing in constructed objects
 	Ok(RazzbotService {
